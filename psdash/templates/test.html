@@ -1,0 +1,11 @@
+<center> Welcome to Brokerage System. Application started successfully . . . </center>
+
+{% for id, n in nodes.iteritems() %} 
+
+{{id}}
+
+<embed width=1200px height=150px src={{ url_for(".index", node=id)}} > 
+             
+         {%endfor%}    
+        
+   <meta http-equiv="refresh" content="10">

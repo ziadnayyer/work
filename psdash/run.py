@@ -15,17 +15,21 @@ import zerorpc
 from psdash import __version__
 from psdash.node import LocalNode, RemoteNode
 from psdash.web import fromtimestamp
+import webbrowser
 
+url = 'http://broker.test.edu.pk:1111/test'
+ 
+# Open URL in new browser window
+webbrowser.open_new(url) # opens in default browser
 
 logger = getLogger('psdash.run')
-
 
 class PsDashRunner(object):
     DEFAULT_LOG_INTERVAL = 60
     DEFAULT_NET_IO_COUNTER_INTERVAL = 3
     DEFAULT_REGISTER_INTERVAL = 60
     DEFAULT_BIND_HOST = '0.0.0.0'
-    DEFAULT_PORT = 5000
+    DEFAULT_PORT = 1111
     LOCAL_NODE = 'localhost'
 
     @classmethod
@@ -71,7 +75,7 @@ class PsDashRunner(object):
             dest='port',
             default=None,
             metavar='port',
-            help='port to listen on. Defaults to 5000.'
+            help='port to listen on. Defaults to 1111.'
         )
         parser.add_argument(
             '-d', '--debug',
@@ -91,7 +95,7 @@ class PsDashRunner(object):
             dest='register_to',
             default=None,
             metavar='host:port',
-            help='The psdash node running in web mode to register this agent to on start up. e.g 10.0.1.22:5000'
+            help='The psdash node running in web mode to register this agent to on start up. e.g 10.0.1.22:1111'
         )
         parser.add_argument(
             '--register-as',
@@ -117,9 +121,10 @@ class PsDashRunner(object):
 
         nodes = self.app.config.get('PSDASH_NODES', [])
         logger.info("Registering %d nodes", len(nodes))
+        
         for n in nodes:
             self.register_node(n['name'], n['host'], int(n['port']))
-
+            
     def add_node(self, node):
         self._nodes[node.get_id()] = node
 
@@ -135,15 +140,20 @@ class PsDashRunner(object):
     def register_node(self, name, host, port):
         n = RemoteNode(name, host, port)
         node = self.get_node(n.get_id())
+                
         if node:
             n = node
             logger.debug("Updating registered node %s", n.get_id())
+            
         else:
             logger.info("Registering %s", n.get_id())
+            #rnode = n.get_id()
+            #print rnode
         n.update_last_registered()
         self.add_node(n)
+        
         return n
-
+        
     def _create_app(self, config=None):
         app = Flask(__name__)
         app.psdash = self

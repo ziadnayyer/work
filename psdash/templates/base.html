@@ -4,10 +4,10 @@
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>psDash - Linux system dashboard</title>
+        <title> Broker - Cloudlet Federation </title>
         <link href="{{ url_for(".static", filename="css/bootstrap.min.css") }}" rel="stylesheet">
         <link href="{{ url_for(".static", filename="css/psdash.css") }}" rel="stylesheet">
-        <link href='http://fonts.googleapis.com/css?family=Ubuntu:300,400' rel='stylesheet' type='text/css'>
+      <!--  <link href='http://fonts.googleapis.com/css?family=Ubuntu:300,400' rel='stylesheet' type='text/css'> -->
         <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
         <!--[if lt IE 9]>
@@ -19,41 +19,42 @@
         <div id="psdash">
             <div class="header">
                 <div class="logo">
-                    <a href="{{ url_for(".index") }}">
-                        <span class="app-name"># psdash <small>v0.6.0</small></span>
-                    </a>
-                </div>
+                <!--    <a href="{{ url_for(".index") }}">
+                        <span class="app-name"># MyDash <small> 1.0 </small></span>
+                    </a> -->
+                </div> 
                 <div class="top-nav">
-                    <div class="host-info">
+                <!--    <div class="host-info">
                         <div class="name">
                              <span class="hostname">{{ hostname }}</span>
-                        </div>
+                        </div> 
                         <div class="info">
                             {{ os }}, uptime: {{ uptime }}
                         </div>
-                    </div>
-                    <div class="dropdown">
-                        <span class="dropdown-text">Switch server:</span>
-                        <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown">
-                            {{ current_node.name }} ({{ current_node.get_id() }})
+                    </div> -->
+                  
+                 <!--   <div class="dropdown">
+                       <span class="dropdown-text"> Cloudlets :</span>
+                       <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown">
+                            {{ hostname }} ({{ current_node.get_id() }})
                             <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu" role="menu">
                             {% for id, n in nodes.iteritems() %}
-                                <li><a href="{{ url_for(".index", node=id) }}">{{ n.name }} ({{ id }})</a></li>
+                                <li><a href="{{ url_for(".index", node=id) }}"> ({{ id }})</a></li>
                             {% endfor %}
                         </ul>
-                    </div>
+                    </div> -->
                 </div>
             </div>
-            <div class="table-container">
+<!--            <div class="table-container"> 
                 <div class="content">
                     <div class="left-nav">
                         <ul class="menu">
                             <li {% if page == "overview" %}class="active"{% endif %}>
                                 <a href="{{ url_for(".index") }}">
                                     <span class="glyphicon glyphicon-th"></span>
-                                    <span class="option-text">Dashboard</span>
+                                    <span class="option-text">Dashboard</span>  
                                 </a>
                             </li>
                             <li {% if page == "processes" %}class="active"{% endif %}>
@@ -81,7 +82,7 @@
                                 </a>
                             </li>
                         </ul>
-                    </div>
+                    </div>  -->
                     <div class="main-content">
                         {% block content %}{% endblock %}
                     </div>

@@ -9,7 +9,7 @@ import zerorpc
 from psdash.log import Logs
 from psdash.helpers import socket_families, socket_types
 from psdash.net import get_interface_addresses, NetIOCounters
-
+from platform import node
 
 logger = logging.getLogger("psdash.node")
 
@@ -36,8 +36,10 @@ class RemoteNode(Node):
         self.name = name
         self.host = host
         self.port = int(port)
+       # print "This is remote node", name,host,port
+        
         self.last_registered = None
-
+        #print self.name
     def _create_service(self):
         logger.info('Connecting to node %s', self.get_id())
         c = zerorpc.Client()
@@ -79,7 +81,7 @@ class LocalService(object):
             'load_avg': os.getloadavg(),
             'num_cpus': psutil.cpu_count()
         }
-
+        
         return sysinfo
 
     def get_memory(self):
@@ -367,3 +369,5 @@ class LocalService(object):
             'content': res
         }
         return data
+    
+

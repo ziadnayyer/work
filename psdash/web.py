@@ -5,19 +5,41 @@ import socket
 from datetime import datetime, timedelta
 import uuid
 import locale
+import MySQLdb
+import time
+import os
+import string
 from flask import render_template, request, session, jsonify, Response, Blueprint, current_app, g
 from werkzeug.local import LocalProxy
 from psdash.helpers import socket_families, socket_types
+from distutils.log import info
+import datetime
 
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 logger = logging.getLogger('psdash.web')
 webapp = Blueprint('psdash', __name__, static_folder='static')
 
+db = MySQLdb.connect(host="localhost",    # your host, usually localhost
+        user="root",         # your username
+        passwd="Gift123",  # your password
+        db="test")        # name of the data base
+cur = db.cursor()
 
 def get_current_node():
+    #print "Current node ", current_app.psdash.get_node(g.node)
+    # usama 
+#     for n in session['node_list']:
+#         print "This is session", n
+#         g.node = n 
+#         print " g.node =",g.node
+#         
+#     print current_app.psdash.get_node(g.node)
+#     
     return current_app.psdash.get_node(g.node)
-
+    
 
 def get_current_service():
+    #print "Current service ", get_current_node().get_service()
     return get_current_node().get_service()
 
 
@@ -32,14 +54,44 @@ def fromtimestamp(value, dateformat='%Y-%m-%d %H:%M:%S'):
 
 @webapp.context_processor
 def inject_nodes():
+    #cnode = current_app.psdash.get_nodes()
+    #print cnode
+    
+    arr = []
+    
+    
+    for n in current_app.psdash.get_nodes():
+        #print n
+        arr.append(n)
+        
+#         if 'node_list' not in session: 
+#             session['node_list'] = n 
+#         else: 
+#             session['node_list'].append(n)
+#             
+#     print "session", session['node_list']
+    
+    text = arr[0]
+    rtext = text.split(':')
+    #print "Session node list", session['node_list']
+    
+        
+    #print rtext[0]
     return {"current_node": current_node, "nodes": current_app.psdash.get_nodes()}
 
-
+#nod = inject_nodes()
+#print nod
 @webapp.context_processor
 def inject_header_data():
     sysinfo = current_service.get_sysinfo()
     uptime = timedelta(seconds=sysinfo['uptime'])
     uptime = str(uptime).split('.')[0]
+    
+    #name = sysinfo['hostname']
+    #cur.execute("UPDATE resource SET uptime='%s' WHERE cloudlet_name='%s'"% (uptime, name))
+    db.commit()
+    #print uptime
+    
     return {
         'os': sysinfo['os'].decode('utf-8'),
         'hostname': sysinfo['hostname'].decode('utf-8'),
@@ -49,17 +101,28 @@ def inject_header_data():
 @webapp.url_defaults
 def add_node(endpoint, values):
     values.setdefault('node', g.node)
-
+    #print "End point ", endpoint, "Values", values
+    
 
 @webapp.before_request
 def add_node():
+#     print "Helllooo", current_app.psdash.LOCAL_NODE
+    
     g.node = request.args.get('node', current_app.psdash.LOCAL_NODE)
-
-
+#     print "Request ", request.args.get('node', current_app.psdash.LOCAL_NODE)
+        
+#     print "Add node",g.node
+      
+    
+#     for n in nodes.iteritem():
+#         g.node = request.args.get('node', current_app.psdash.LOCAL_NODE)
+#         print "g.node = ",g.node
+#          
 @webapp.before_request
 def check_access():
-    if not current_node:
-        return 'Unknown psdash node specified', 404
+    # usama
+#     if not current_node:
+#         return 'Unknown psdash node specified', 404
 
     allowed_remote_addrs = current_app.config.get('PSDASH_ALLOWED_REMOTE_ADDRESSES')
     if allowed_remote_addrs:
@@ -102,14 +165,17 @@ def access_denied(e):
     errmsg = 'No process with pid %d was found.' % e.pid
     return render_template('error.html', error=errmsg), 404
 
-
 @webapp.route('/')
 def index():
+    
+    
     sysinfo = current_service.get_sysinfo()
-
+    info = sysinfo['hostname']
+    #print info
     netifs = current_service.get_network_interfaces().values()
     netifs.sort(key=lambda x: x.get('bytes_sent'), reverse=True)
-
+       
+    
     data = {
         'load_avg': sysinfo['load_avg'],
         'num_cpus': sysinfo['num_cpus'],
@@ -122,7 +188,97 @@ def index():
         'page': 'overview',
         'is_xhr': request.is_xhr
     }
-
+    #print data['net_interfaces']
+    
+    
+    load = data['load_avg']
+    AvLoad = load[1]
+    
+    disk = data['disks']
+    
+    mem = data['memory']
+    
+    cores = data['num_cpus']
+    
+    tcpu = data['cpu']
+    
+    tdiskgb = round(float(disk[0]["space_total"])/1000000000,1)
+    fdiskgb = round(float(disk[0]["space_free"])/1000000000,1)
+    
+    tmemgb = round(float(mem["total"])/1000000000,1)
+    fmemgb = round(float(mem["free"])/1000000000,1)
+    
+    ipaddress = data['net_interfaces']
+   
+    nam = ipaddress[0]['name']
+    if nam == 'ens33':
+        ip = ipaddress[0]['ip']
+    else:    
+        ip = ipaddress[1]['ip']
+    print ip
+    msg = cur.execute("SELECT ip_address FROM resource WHERE ip_address='%s'"% (ip))
+    #ipaddress = cur.fetchall()
+    
+    currentDT = datetime.datetime.now()
+    ltime = (currentDT.strftime("%H:%M:%S"))        
+    
+    # check if it is empty and print error
+    if msg != 1:
+        print 'New Cloudlet discovered'
+        status = 'up'
+        
+        #print 'New cloudlet registered' % time.clock()      
+        cur.execute("INSERT INTO resource SET ip_address='%s',cloudlet_name='%s',last_updated='%s',status='%s',CPU_Cores=%s,CPU_AvLoad=%s,disk_total=%s,disk_free=%s,memory_total=%s,memory_free=%s"% (ip, info, status, ltime, cores, AvLoad, tdiskgb, fdiskgb, tmemgb, fmemgb))
+        db.commit()
+    else:
+        #print 'No new cloudlet discovered'
+        cur.execute("select ip_address from resource")
+        ipaddress = cur.fetchall()
+        print ipaddress
+        for n in ipaddress:
+            #nn = n[0]
+            #print n
+            status = True if os.system("ping -c 1 "  + n[0]) is 0 else False       
+#             #status = s.connect((ip,'80'))
+            if status == True:
+                status = 'up'
+#                 #print status
+                cur.execute("UPDATE resource SET status='%s' WHERE ip_address='%s'"% (status, n[0]))
+                db.commit()    
+            else:
+                status = 'down'
+#                 #print status
+                cur.execute("UPDATE resource SET status='%s' WHERE ip_address='%s'"% (status, n[0]))
+                db.commit()    
+        print status
+        cur.execute("UPDATE resource SET last_updated='%s',CPU_AvLoad=%s,disk_total=%s,disk_free=%s,memory_total=%s,memory_free=%s WHERE ip_address='%s'"% (ltime, AvLoad, tdiskgb, fdiskgb, tmemgb, fmemgb, ip))
+        db.commit()
+        
+    cur.execute("SELECT * FROM resource")
+    results = cur.fetchall()
+  
+    widths = []
+    columns = []
+    tavnit = '|'
+    separator = '+' 
+  
+    for cd in cur.description:
+        widths.append(max(cd[2], len(cd[0])))
+        columns.append(cd[0])
+  
+    for w in widths:
+        tavnit += " %-"+"%ss |" % (w,)
+        separator += '-'*w + '--+'
+  
+    print(separator)
+    print(tavnit % tuple(columns))
+    print(separator)
+    for row in results:
+        print(tavnit % row)
+    print(separator)
+       
+       
+       
     return render_template('index.html', **data)
 
 
@@ -324,6 +480,14 @@ def register_node():
     name = request.args['name']
     port = request.args['port']
     host = request.remote_addr
-
+    
     current_app.psdash.register_node(name, host, port)
     return jsonify({'status': 'OK'})
+
+#db.commit()
+#db.close()
+
+@webapp.route('/test')
+def test():
+    
+    return render_template("test.html")

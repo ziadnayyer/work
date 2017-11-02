@@ -135,7 +135,7 @@ def update():
                 record = 0
                 el_cloudlet.append('NULL')
                 #print request_number,record,rresult[i][0]
-        #print request_number,el_cloudlet
+        print request_number,el_cloudlet
         
         for i in range(len(el_cloudlet)):
             #if el_cloudlet[i] != 'NULL':

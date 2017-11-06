@@ -19,27 +19,18 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 logger = logging.getLogger('psdash.web')
 webapp = Blueprint('psdash', __name__, static_folder='static')
 
+#Ziad# local DB connection
 db = MySQLdb.connect(host="localhost",    # your host, usually localhost
-        user="root",         # your username
-        passwd="Gift123",  # your password
-        db="test")        # name of the data base
+    user="root",         # your username
+    passwd="Gift123",  # your password
+    db="test")        # name of the data base
 cur = db.cursor()
 
 def get_current_node():
-    #print "Current node ", current_app.psdash.get_node(g.node)
-    # usama 
-#     for n in session['node_list']:
-#         print "This is session", n
-#         g.node = n 
-#         print " g.node =",g.node
-#         
-#     print current_app.psdash.get_node(g.node)
-#     
     return current_app.psdash.get_node(g.node)
     
 
 def get_current_service():
-    #print "Current service ", get_current_node().get_service()
     return get_current_node().get_service()
 
 
@@ -54,43 +45,14 @@ def fromtimestamp(value, dateformat='%Y-%m-%d %H:%M:%S'):
 
 @webapp.context_processor
 def inject_nodes():
-    #cnode = current_app.psdash.get_nodes()
-    #print cnode
-    
-    arr = []
-    
-    
-    for n in current_app.psdash.get_nodes():
-        #print n
-        arr.append(n)
-        
-#         if 'node_list' not in session: 
-#             session['node_list'] = n 
-#         else: 
-#             session['node_list'].append(n)
-#             
-#     print "session", session['node_list']
-    
-    text = arr[0]
-    rtext = text.split(':')
-    #print "Session node list", session['node_list']
-    
-        
-    #print rtext[0]
     return {"current_node": current_node, "nodes": current_app.psdash.get_nodes()}
 
-#nod = inject_nodes()
-#print nod
+
 @webapp.context_processor
 def inject_header_data():
     sysinfo = current_service.get_sysinfo()
     uptime = timedelta(seconds=sysinfo['uptime'])
     uptime = str(uptime).split('.')[0]
-    
-    #name = sysinfo['hostname']
-    #cur.execute("UPDATE resource SET uptime='%s' WHERE cloudlet_name='%s'"% (uptime, name))
-    db.commit()
-    #print uptime
     
     return {
         'os': sysinfo['os'].decode('utf-8'),
@@ -101,29 +63,15 @@ def inject_header_data():
 @webapp.url_defaults
 def add_node(endpoint, values):
     values.setdefault('node', g.node)
-    #print "End point ", endpoint, "Values", values
-    
+        
 
 @webapp.before_request
 def add_node():
-#     print "Helllooo", current_app.psdash.LOCAL_NODE
-    
     g.node = request.args.get('node', current_app.psdash.LOCAL_NODE)
-#     print "Request ", request.args.get('node', current_app.psdash.LOCAL_NODE)
-        
-#     print "Add node",g.node
-      
-    
-#     for n in nodes.iteritem():
-#         g.node = request.args.get('node', current_app.psdash.LOCAL_NODE)
-#         print "g.node = ",g.node
-#          
+
+
 @webapp.before_request
 def check_access():
-    # usama
-#     if not current_node:
-#         return 'Unknown psdash node specified', 404
-
     allowed_remote_addrs = current_app.config.get('PSDASH_ALLOWED_REMOTE_ADDRESSES')
     if allowed_remote_addrs:
         if request.remote_addr not in allowed_remote_addrs:
@@ -167,15 +115,15 @@ def access_denied(e):
 
 @webapp.route('/')
 def index():
-    
-    
     sysinfo = current_service.get_sysinfo()
+    
+    #ziad# Get hostname
     info = sysinfo['hostname']
     #print info
+    
     netifs = current_service.get_network_interfaces().values()
     netifs.sort(key=lambda x: x.get('bytes_sent'), reverse=True)
-       
-    
+        
     data = {
         'load_avg': sysinfo['load_avg'],
         'num_cpus': sysinfo['num_cpus'],
@@ -190,7 +138,7 @@ def index():
     }
     #print data['net_interfaces']
     
-    
+    #ziad# Get desired parameters
     load = data['load_avg']
     AvLoad = load[1]
     
@@ -202,12 +150,15 @@ def index():
     
     tcpu = data['cpu']
     
+    #ziad# conversion from bytes to GB
+    
     tdiskgb = round(float(disk[0]["space_total"])/1000000000,1)
     fdiskgb = round(float(disk[0]["space_free"])/1000000000,1)
     
     tmemgb = round(float(mem["total"])/1000000000,1)
     fmemgb = round(float(mem["free"])/1000000000,1)
     
+    #ziad# Get active network interface ip address
     ipaddress = data['net_interfaces']
    
     nam = ipaddress[0]['name']
@@ -215,19 +166,18 @@ def index():
         ip = ipaddress[0]['ip']
     else:    
         ip = ipaddress[1]['ip']
-    print ip
-    msg = cur.execute("SELECT ip_address FROM resource WHERE ip_address='%s'"% (ip))
-    #ipaddress = cur.fetchall()
+    #print ip
     
     currentDT = datetime.datetime.now()
     ltime = (currentDT.strftime("%H:%M:%S"))        
     
-    # check if it is empty and print error
+    msg = cur.execute("SELECT ip_address FROM resource WHERE ip_address='%s'"% (ip))
+    #ipaddress = cur.fetchall()
+    
+    #ziad# check if resource table is empty and new cloudlet has been discovered
     if msg != 1:
         print 'New Cloudlet discovered'
         status = 'up'
-        
-        #print 'New cloudlet registered' % time.clock()      
         cur.execute("INSERT INTO resource SET ip_address='%s',cloudlet_name='%s',last_updated='%s',status='%s',CPU_Cores=%s,CPU_AvLoad=%s,disk_total=%s,disk_free=%s,memory_total=%s,memory_free=%s"% (ip, info, status, ltime, cores, AvLoad, tdiskgb, fdiskgb, tmemgb, fmemgb))
         db.commit()
     else:
@@ -239,7 +189,6 @@ def index():
             #nn = n[0]
             #print n
             status = True if os.system("ping -c 1 "  + n[0]) is 0 else False       
-#             #status = s.connect((ip,'80'))
             if status == True:
                 status = 'up'
 #                 #print status
@@ -250,13 +199,14 @@ def index():
 #                 #print status
                 cur.execute("UPDATE resource SET status='%s' WHERE ip_address='%s'"% (status, n[0]))
                 db.commit()    
-        print status
+        #print status
         cur.execute("UPDATE resource SET last_updated='%s',CPU_AvLoad=%s,disk_total=%s,disk_free=%s,memory_total=%s,memory_free=%s WHERE ip_address='%s'"% (ltime, AvLoad, tdiskgb, fdiskgb, tmemgb, fmemgb, ip))
         db.commit()
         
     cur.execute("SELECT * FROM resource")
     results = cur.fetchall()
-  
+    
+    #ziad# print output of resource table
     widths = []
     columns = []
     tavnit = '|'
@@ -276,8 +226,6 @@ def index():
     for row in results:
         print(tavnit % row)
     print(separator)
-       
-       
        
     return render_template('index.html', **data)
 
